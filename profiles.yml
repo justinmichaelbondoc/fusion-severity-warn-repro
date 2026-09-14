@@ -1,0 +1,7 @@
+fusion_severity_warn_repro:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: repro.duckdb
+      threads: 4

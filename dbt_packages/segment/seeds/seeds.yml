@@ -1,0 +1,11 @@
+version: 2
+
+seeds:
+  - name: referrer_mapping
+    columns:
+      - name: host
+        data_tests:
+          - unique:
+              config:
+                severity: warn
+          - not_null

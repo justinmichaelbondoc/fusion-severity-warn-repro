@@ -1,0 +1,15 @@
+dbt-fusion 2.0.0-preview.218
+   Loading profiles.yml
+    Failed [  1.01s] seed  main.referrer_mapping (table)
+   Skipped [-------] test  not_null_referrer_mapping_host (dbt_packages/segment/seeds/seeds.yml:11:13)
+   Skipped [-------] test  unique_referrer_mapping_host (dbt_packages/segment/seeds/seeds.yml:8:13)
+
+=================== Errors and Warnings ====================
+[error] [DbDriverFailed (dbt1308)]: Database Error in seed referrer_mapping (target/run/segment/dbt_packages/segment/seeds/referrer_mapping.sql)
+  IO Error: No files found that match the pattern "/private/tmp/claude-502/-Users-justinbondoc-Downloads/5227299a-1516-45c8-ac66-2a10ae59e249/scratchpad/fusion-severity-warn-repro/dbt_packages/segment/dbt_packages/segment/seeds/referrer_mapping.csv"
+  (in run/segment/dbt_packages/segment/seeds/referrer_mapping.sql)
+
+==================== Execution Summary =====================
+Finished 'build' with 1 error for target 'dev' [1.3s]
+Processed: 2 tests | 1 seed
+Summary: 3 total | 1 error | 2 skipped

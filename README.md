@@ -91,10 +91,74 @@ data_tests:
         severity: warn
 ```
 
+## Finding 2: committed (non-gitignored) `dbt_packages/` causes a path-doubling error
+
+This is a **separate, fully reproducible** bug, found while investigating
+whether the customer's project structure — where `dbt_packages/` is *not*
+listed in `.gitignore`, meaning package contents get committed directly
+into the consuming project's own git repo — could be a contributing
+factor. This finding is based purely on directory structure; no telemetry,
+warehouse data, or other customer-specific content was used to build it.
+
+### Setup
+
+`dbt_packages/segment/` present as a plain, already-materialized directory
+(not a symlink from a local-path dependency, not fetched via `dbt deps`) —
+i.e. exactly what you'd get if a package's files were committed straight
+into the project's git history instead of being gitignored:
+
+```
+.
+├── dbt_project.yml
+├── profiles.yml
+└── dbt_packages/
+    └── segment/
+        ├── dbt_project.yml
+        ├── .gitignore
+        ├── tests/
+        └── seeds/
+            ├── referrer_mapping.csv
+            └── seeds.yml
+```
+
+### Result: reproduces 100% of the time
+
+```
+    Failed [  1.01s] seed  main.referrer_mapping (table)
+   Skipped [-------] test  not_null_referrer_mapping_host (dbt_packages/segment/seeds/seeds.yml:11:13)
+   Skipped [-------] test  unique_referrer_mapping_host (dbt_packages/segment/seeds/seeds.yml:8:13)
+
+=================== Errors and Warnings ====================
+[error] [DbDriverFailed (dbt1308)]: Database Error in seed referrer_mapping (target/run/segment/dbt_packages/segment/seeds/referrer_mapping.sql)
+  IO Error: No files found that match the pattern
+  ".../dbt_packages/segment/dbt_packages/segment/seeds/referrer_mapping.csv"
+```
+
+Fusion doubles the package path (`dbt_packages/segment/` prefixed onto
+`dbt_packages/segment/seeds/referrer_mapping.csv`, which is already a
+full path from the project root) when the package exists as a plain
+on-disk directory rather than one resolved through its normal install
+path. Confirmed this isn't name-specific — renaming the package folder
+reproduces the identical doubled-path failure.
+
+### How this relates to ticket #136436
+
+**Not a direct match.** The customer's own telemetry showed the `segment`
+package's Hub-deprecation warning, meaning it *was* installed normally via
+`dbt deps` in their real run, and the seed loaded successfully with the
+test actually executing (1,803 real failing rows) — not an IO/path error.
+So this exact failure mode doesn't explain their reported symptom by
+itself.
+
+It's flagged here as a **plausible contributing factor**, not a confirmed
+cause: if a stale, git-committed copy of `dbt_packages/` sits alongside a
+freshly-`deps`-installed one, a collision between the two could produce
+corrupted or inconsistent state. That hypothesis has not been verified.
+
 ## Next steps
 
 - Try a larger multi-threaded build (dozens+ of nodes, `--threads > 1`) to
-  see if the invocation-level miscount appears at scale.
+  see if the invocation-level miscount from Finding 1 appears at scale.
 - Check `dbt-labs/dbt-core` (where Fusion `[v2 Bug]`/`engine:v2` issues are
   filed) for prior art — none found as of this writing across ~350 recently
   paginated `engine:v2` issues (GitHub's search API was returning 502s at
